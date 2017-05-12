@@ -31,7 +31,7 @@ CycleGANは [https://github.com/Aixile/chainer-cyclegan](https://github.com/Aixi
 
 ## Licence
 
-[MIT](https://github.com/tcnksm/tool/blob/master/LICENCE)
+[MIT](LICENCE.txt)
 
 ## Author
 
