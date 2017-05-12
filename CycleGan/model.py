@@ -400,7 +400,7 @@ class CycleGan():
 		"""
 		return None
 
-	def addXToRingAndGet_(self, data):
+	def addXToRingAndGet(self, data):
 		"""指定値をリングバッファに追加し、リングバッファ内からランダムに選んだ値を返す.
 		# Args:
 			data: リングバッファに追加する値.
@@ -425,7 +425,7 @@ class CycleGan():
 		id = np.random.randint(0, self.max_buffer_size)
 		return dnn.ToGpu(self.ring_x[id, :].reshape(data.shape[:2] + (self.image_size, self.image_size)))
 
-	def addYToRingAndGet_(self, data):
+	def addYToRingAndGet(self, data):
 		"""指定値をリングバッファに追加し、リングバッファ内からランダムに選んだ値を返す.
 		# Args:
 			data: リングバッファに追加する値.
