@@ -1,0 +1,6 @@
+*.png
+*.pyc
+*.chain
+*.optimizer
+*.db
+uploaderCore.py
