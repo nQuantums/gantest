@@ -6,6 +6,7 @@ import numpy as np
 import dnn
 import dsconf
 import imgutil
+from . import imgcnv
 
 class Dataset():
 	"""データセット.
@@ -31,8 +32,8 @@ class Dataset():
 		# リサイズ後の画像を作成
 		rx = imgutil.ResizeIfLarger(self.xs[random.randrange(0, len(self.xs))], size1)
 		rt = imgutil.ResizeIfLarger(self.ts[random.randrange(0, len(self.ts))], size2)
-		rx = imgutil.BgrToPM(rx)
-		rt = imgutil.BgrToPM(rt)
+		rx = imgcnv.BgrToDnn(rx)
+		rt = imgcnv.BgrToDnn(rt)
 
 		# データペア領域作成
 		x = np.full((dsconf.InChs,) + dssize, 1, dtype=dnn.dtype)

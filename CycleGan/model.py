@@ -7,7 +7,7 @@ from chainer import Variable
 import cv2
 import dnn
 import dsconf
-import imgutil
+from . import imgcnv
 import uploader
 
 # 参考元 https://github.com/Aixile/chainer-cyclegan
@@ -227,18 +227,22 @@ class CycleGan():
 		self.opt_x = make_optimizer(self.dis_x, alpha=learning_rate_d)
 		self.opt_y = make_optimizer(self.dis_y, alpha=learning_rate_d)
 
-		self._lambda1 = lambda1
-		self._lambda2 = lambda2
-		self._learning_rate_anneal = learning_rate_anneal
-		self._learning_rate_anneal_interval = learning_rate_anneal_interval
-		self._image_size = dsconf.MaxImageSize[0]
-		self._iter = 0
-		self._max_buffer_size = 50
+		self.lambda1 = lambda1
+		self.lambda2 = lambda2
+		self.learning_rate_anneal = learning_rate_anneal
+		self.learning_rate_anneal_interval = learning_rate_anneal_interval
+		self.image_size = dsconf.MaxImageSize[0]
+		self.iter = 0
+		self.max_buffer_size = 50
 
-		# gen_g の出力をリングバッファ状に蓄えておくバッファ
-		self._buffer_x = np.zeros((self._max_buffer_size, batch_size, in_ch, self._image_size, self._image_size), dtype=dnn.dtype)
-		# gen_f の出力をリングバッファ状に蓄えておくバッファ
-		self._buffer_y = np.zeros((self._max_buffer_size, batch_size, in_ch, self._image_size, self._image_size), dtype=dnn.dtype)
+		# gen_g の出力を蓄えておくリングバッファ
+		self.ring_x = np.zeros((self.max_buffer_size, batch_size, in_ch, self.image_size, self.image_size), dtype=dnn.dtype)
+		self.ring_x_len = 0 # バッファ内有効要素数
+		self.ring_x_next = 0 # 次回バッファに書き込み時のインデックス
+		# gen_f の出力を蓄えておくリングバッファ
+		self.ring_y = np.zeros((self.max_buffer_size, batch_size, in_ch, self.image_size, self.image_size), dtype=dnn.dtype)
+		self.ring_y_len = 0 # バッファ内有効要素数
+		self.ring_y_next = 0 # 次回バッファに書き込み時のインデックス
 
 	def save(self):
 		"""ニューラルネットワークモデルの学習済みデータを保存する.
@@ -294,32 +298,32 @@ class CycleGan():
 			saveEval: 評価用画像を所定のディレクトリに保存するかどうか.
 			showEval: 評価用画像を表示するかどうか.
 		"""
-		self._iter += 1
+		self.iter += 1
 
-		w_in = self._image_size
+		w_in = self.image_size
 
 		x = x if isinstance(x, Variable) else Variable(x)
 		y = t if isinstance(t, Variable) else Variable(t)
 
 		x_y = self.gen_g(x)
-		x_y_copy = self.getAndUpdateBufferX(x_y.data)
+		x_y_copy = self.addXToRingAndGet(x_y.data)
 		x_y_copy = Variable(x_y_copy)
 		x_y_x = self.gen_f(x_y)
 
 		y_x = self.gen_f(y)
-		y_x_copy = self.getAndUpdateBufferY(y_x.data)
+		y_x_copy = self.addYToRingAndGet(y_x.data)
 		y_x_copy = Variable(y_x_copy)
 		y_x_y = self.gen_g(y_x)
 
-		if self._learning_rate_anneal > 0 and self._iter % self._learning_rate_anneal_interval == 0:
-			if self.opt_g.alpha > self._learning_rate_anneal:
-				self.opt_g.alpha -= self._learning_rate_anneal
-			if self.opt_f.alpha > self._learning_rate_anneal:
-				self.opt_f.alpha -= self._learning_rate_anneal
-			if self.opt_x.alpha > self._learning_rate_anneal:
-				self.opt_x.alpha -= self._learning_rate_anneal
-			if self.opt_y.alpha > self._learning_rate_anneal:
-				self.opt_y.alpha -= self._learning_rate_anneal
+		if self.learning_rate_anneal > 0 and self.iter % self.learning_rate_anneal_interval == 0:
+			if self.opt_g.alpha > self.learning_rate_anneal:
+				self.opt_g.alpha -= self.learning_rate_anneal
+			if self.opt_f.alpha > self.learning_rate_anneal:
+				self.opt_f.alpha -= self.learning_rate_anneal
+			if self.opt_x.alpha > self.learning_rate_anneal:
+				self.opt_x.alpha -= self.learning_rate_anneal
+			if self.opt_y.alpha > self.learning_rate_anneal:
+				self.opt_y.alpha -= self.learning_rate_anneal
 
 		self.opt_g.zero_grads()
 		self.opt_f.zero_grads()
@@ -347,9 +351,9 @@ class CycleGan():
 		loss_gen_g_adv = loss_func_adv_gen(self.dis_y(x_y))
 		loss_gen_f_adv = loss_func_adv_gen(self.dis_x(y_x))
 
-		loss_cycle_x = self._lambda1 * loss_func_rec_l1(x_y_x, x)
-		loss_cycle_y = self._lambda1 * loss_func_rec_l1(y_x_y, y)
-		loss_gen = self._lambda2 * loss_gen_g_adv + self._lambda2 * loss_gen_f_adv + loss_cycle_x + loss_cycle_y
+		loss_cycle_x = self.lambda1 * loss_func_rec_l1(x_y_x, x)
+		loss_cycle_y = self.lambda1 * loss_func_rec_l1(y_x_y, y)
+		loss_gen = self.lambda2 * loss_gen_g_adv + self.lambda2 * loss_gen_f_adv + loss_cycle_x + loss_cycle_y
 		loss_gen.backward()
 		self.opt_f.update()
 		self.opt_g.update()
@@ -376,7 +380,7 @@ class CycleGan():
 					cs = c * w_in
 					img[:, rs:rs + w_in, cs:cs + w_in] = cells[i]
 					i += 1
-			img = imgutil.PMToBgr(img)
+			img = imgcnv.DnnToBgr(img)
 
 			if saveEval:
 				f = os.path.normpath(os.path.join(dnn.GetEvalDataDir(), "eval.png"))
@@ -396,38 +400,68 @@ class CycleGan():
 		"""
 		return None
 
-	def getAndUpdateBufferX(self, data):
-		# とりあえずバッファを埋める
-		if self._iter < self._max_buffer_size:
-			self._buffer_x[self._iter, :] = dnn.ToCpu(data)
-			return data
+	def addXToRingAndGet_(self, data):
+		"""指定値をリングバッファに追加し、リングバッファ内からランダムに選んだ値を返す.
+		# Args:
+			data: リングバッファに追加する値.
+		# Returns:
+			入力値またはリングバッファ内の値.
+		"""
+		# リングバッファキャパシティ
+		n = len(self.ring_x)
 
-		# バッファをスライドし空いた最後尾に設定
-		self._buffer_x[0:self._max_buffer_size - 2, :] = self._buffer_x[1:self._max_buffer_size - 1, :]
-		self._buffer_x[self._max_buffer_size - 1, :] = dnn.ToCpu(data)
+		# とりあえず書き込む
+		self.ring_x[self.ring_x_next, :] = dnn.ToCpu(data)
+		self.ring_x_next = (self.ring_x_next + 1) % n
+		if self.ring_x_len < n:
+			self.ring_x_len += 1
+			return data # バッファが埋まるまでは入力値をそのまま使用
 
-		# 50%の確率で元の値をそのまま使用する
+		# 50%の確率で入力値をそのまま返す
 		if np.random.rand() < 0.5:
 			return data
 
-		# バッファ内からランダムに選んで返す
-		id = np.random.randint(0, self._max_buffer_size)
-		return dnn.ToGpu(self._buffer_x[id, :].reshape(data.shape[:2] + (self._image_size, self._image_size)))
+		# リングバッファ内からランダムに選んで返す
+		id = np.random.randint(0, self.max_buffer_size)
+		return dnn.ToGpu(self.ring_x[id, :].reshape(data.shape[:2] + (self.image_size, self.image_size)))
 
-	def getAndUpdateBufferY(self, data):
-		# とりあえずバッファを埋める
-		if self._iter < self._max_buffer_size:
-			self._buffer_y[self._iter, :] = dnn.ToCpu(data)
-			return data
+	def addYToRingAndGet_(self, data):
+		"""指定値をリングバッファに追加し、リングバッファ内からランダムに選んだ値を返す.
+		# Args:
+			data: リングバッファに追加する値.
+		# Returns:
+			入力値またはリングバッファ内の値.
+		"""
+		# リングバッファキャパシティ
+		n = len(self.ring_y)
 
-		# バッファをスライドし空いた最後尾に設定
-		self._buffer_y[0:self._max_buffer_size - 2, :] = self._buffer_y[1:self._max_buffer_size - 1, :]
-		self._buffer_y[self._max_buffer_size - 1, :] = dnn.ToCpu(data)
+		# とりあえず書き込む
+		self.ring_y[self.ring_y_next, :] = dnn.ToCpu(data)
+		self.ring_y_next = (self.ring_y_next + 1) % n
+		if self.ring_y_len < n:
+			self.ring_y_len += 1
+			return data # バッファが埋まるまでは入力値をそのまま使用
 
-		# 50%の確率で元の値をそのまま使用する
+		# 50%の確率で入力値をそのまま返す
 		if np.random.rand() < 0.5:
 			return data
 
-		# バッファ内からランダムに選んで返す
-		id = np.random.randint(0, self._max_buffer_size)
-		return dnn.ToGpu(self._buffer_y[id, :].reshape(data.shape[:2] + (self._image_size, self._image_size)))
+		# リングバッファ内からランダムに選んで返す
+		id = np.random.randint(0, self.max_buffer_size)
+		return dnn.ToGpu(self.ring_y[id, :].reshape(data.shape[:2] + (self.image_size, self.image_size)))
+
+	def addXToRingAndGet_ImShow(self, data):
+		ret = self.addXToRingAndGet(data)
+		img = np.zeros((data.shape[1], self.image_size, self.image_size * 2), dtype=dnn.dtype)
+		img[:, :, :self.image_size] = dnn.ToCpu(data[0])
+		img[:, :, self.image_size:] = dnn.ToCpu(ret[0])
+		cv2.imshow("x", imgcnv.DnnToBgr(img))
+		return ret
+
+	def addYToRingAndGet_ImShow(self, data):
+		ret = self.addYToRingAndGet(data)
+		img = np.zeros((data.shape[1], self.image_size, self.image_size * 2), dtype=dnn.dtype)
+		img[:, :, :self.image_size] = dnn.ToCpu(data[0])
+		img[:, :, self.image_size:] = dnn.ToCpu(ret[0])
+		cv2.imshow("y", imgcnv.DnnToBgr(img))
+		return ret

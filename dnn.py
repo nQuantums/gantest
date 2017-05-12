@@ -2,7 +2,7 @@
 """
 import os
 
-# テンソル内スカラーの型
+# テンソル内スカラーの型、そのうち Chainer が FP16 対応したらそっち使いたい
 dtype = None
 # テンソル計算モジュール、numpy または cupy
 xp = None
