@@ -12,6 +12,9 @@ CycleGANは [https://github.com/Aixile/chainer-cyclegan](https://github.com/Aixi
 有用なコードを有難うございます。
 
 ## Demo
+学習経過のデモサイトは[こちら](http://www.nquantums.net/dnn/)。  
+いつ止めるかわかりません。
+
 ![](./doc/fig1.jpg)
 
 ## Requirement
@@ -24,6 +27,14 @@ CycleGANは [https://github.com/Aixile/chainer-cyclegan](https://github.com/Aixi
 - OpenCV3
 
 ## Usage
+１．まずデータセットを作ります。  
+※ imagesDir には*.jpg,*.png が入ったディレクトリを指定します。
+※ 現状では datasets/cyclegan ディレクトリ内に通常背景と白背景画像に分けて作成されます。
+
+	python ./buildds.py CycleGAN imagesDir
+
+２．学習を実行します。
+※ 実行すると学習経過の画像が表示されます、なんとなく眺めていると面白かったので。
 
 	python ./train.py CycleGAN
 
@@ -31,7 +42,7 @@ CycleGANは [https://github.com/Aixile/chainer-cyclegan](https://github.com/Aixi
 
 ## Licence
 
-[MIT](LICENCE.txt)
+[MIT](./LICENSE)
 
 ## Author
 

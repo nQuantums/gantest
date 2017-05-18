@@ -422,7 +422,7 @@ class CycleGan():
 			return data
 
 		# リングバッファ内からランダムに選んで返す
-		id = np.random.randint(0, self.max_buffer_size)
+		id = np.random.randint(0, n)
 		return dnn.ToGpu(self.ring_x[id, :].reshape(data.shape[:2] + (self.image_size, self.image_size)))
 
 	def addYToRingAndGet(self, data):
@@ -447,7 +447,7 @@ class CycleGan():
 			return data
 
 		# リングバッファ内からランダムに選んで返す
-		id = np.random.randint(0, self.max_buffer_size)
+		id = np.random.randint(0, n)
 		return dnn.ToGpu(self.ring_y[id, :].reshape(data.shape[:2] + (self.image_size, self.image_size)))
 
 	def addXToRingAndGet_ImShow(self, data):
