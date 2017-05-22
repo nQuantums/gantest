@@ -1,11 +1,12 @@
 """共通のイメージ処理.
 """
+import math
 import numpy as np
 import cv2
 import dnn
 
 def ResizeIfLarger(img, size):
-	"""指定イメージが指定サイズを超えているなら縮小する、アスペクト比率は維持される.
+	"""指定イメージが指定サイズを超えているなら縮小する、アスペクト比は維持される.
 	# Args:
 		img: 元イメージ.
 		size: 目標サイズ.
@@ -18,8 +19,8 @@ def ResizeIfLarger(img, size):
 	if 1.0 <= r:
 		return img
 
-	w = int(shape[1] * r)
-	h = int(shape[0] * r)
+	w = min(int(math.ceil(shape[1] * r)), size)
+	h = min(int(math.ceil(shape[0] * r)), size)
 	return cv2.resize(img, (w, h), interpolation=cv2.INTER_AREA)
 
 def BgrToPM(bgr):

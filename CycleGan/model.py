@@ -117,7 +117,7 @@ class Generator_ResBlock_6(chainer.Chain):
 		layers["c10"] = CBR(128, 64, bn=True, sample='up')
 		layers["c11"] = CBR(64, 32, bn=True, sample='up')
 		layers["c12"] = CBR(32, 3, bn=True, sample='none-7', activation=F.tanh)
-		super().__init__(**layers)
+		super(Generator_ResBlock_6, self).__init__(**layers)
 
 	def __call__(self, x):
 		h = self.c1(x)
@@ -152,7 +152,7 @@ class Generator_ResBlock_9(chainer.Chain):
 		layers["c13"] = CBR(128, 64, bn=True, sample='up')
 		layers["c14"] = CBR(64, 32, bn=True, sample='up')
 		layers["c15"] = CBR(32, out_ch, bn=True, sample='none-7', activation=F.tanh)
-		super().__init__(**layers)
+		super(Generator_ResBlock_9, self).__init__(**layers)
 
 	def __call__(self, x):
 		h = self.c1(x)
