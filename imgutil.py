@@ -19,8 +19,8 @@ def ResizeIfLarger(img, size):
 	if 1.0 <= r:
 		return img
 
-	w = max(int(math.ceil(shape[1] * r)), size)
-	h = max(int(math.ceil(shape[0] * r)), size)
+	w = max(int(math.ceil(shape[1] * r)), 1)
+	h = max(int(math.ceil(shape[0] * r)), 1)
 	return cv2.resize(img, (w, h), interpolation=cv2.INTER_AREA)
 
 def BgrToPM(bgr):

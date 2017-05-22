@@ -2,6 +2,7 @@ gantest
 ===
 Chainerによる学習処理の叩き台。  
 現状CycleGANとpix2pixが入ってます。
+pix2pixは現状途中です。
 
 ## Description
 CNNを試そうとすると大体同じような処理になるので、  
